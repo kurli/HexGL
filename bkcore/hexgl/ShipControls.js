@@ -8,6 +8,8 @@
 var bkcore = bkcore || {};
 bkcore.hexgl = bkcore.hexgl || {};
 
+var touchesHolder = touchesHolder || new Array;
+
 bkcore.hexgl.ShipControls = function(domElement)
 {
 	var self = this;
@@ -113,6 +115,7 @@ bkcore.hexgl.ShipControls = function(domElement)
 		left: false,
 		right: false
 	};
+	this.sliceWidth = document.body.clientWidth / 4;
 
 	function onKeyDown(event) 
 	{
@@ -154,8 +157,154 @@ bkcore.hexgl.ShipControls = function(domElement)
 		}
 	};
 
+	function cloneTouch(touch)
+	{
+		return { identifier: touch.identifier,
+		         pageX: touch.pageX, pageY: touch.pageY,
+		         clientX: touch.clientX, clientY: touch.clientY };
+	}
+
+	function findTouchIndexById(idToFind)
+	{
+		for(var i = 0; i < touchesHolder.length; i++)
+		{
+			var id = touchesHolder[i].identifier;
+			if(id == idToFind)
+				return i;
+		}
+		return -1;  // not found.
+	}
+
+	function onTouchStart(event)
+	{
+		event.preventDefault();
+		var touches = event.changedTouches;
+		var sliceWidth = self.sliceWidth;
+		for(var i = 0; i < touches.length; i++)
+		{
+			var x = touches[i].clientX;
+			touchesHolder.push(cloneTouch(touches[i]));
+
+			if(x >= 0 && x < sliceWidth)
+				self.key.left = true;
+			else if(x >= sliceWidth && x < sliceWidth * 2)
+				self.key.right = true;
+			else if(x >= sliceWidth * 2 && x < sliceWidth * 3)
+				self.key.backward = true;
+			else if(x >= sliceWidth * 3 && x <= sliceWidth * 4)
+				self.key.forward = true;
+		}
+	};
+
+	function onTouchEndOrCancelled(event)
+	{
+		event.preventDefault();
+		var touches = event.changedTouches;
+		var sliceWidth = self.sliceWidth;
+		for(var i = 0; i < touches.length; i++)
+		{
+			var x = touches[i].clientX;
+			var idx = findTouchIndexById(touches[i].identifier);
+			if(x >= 0 && x < sliceWidth)
+				self.key.left = false;
+			else if(x >= sliceWidth && x < sliceWidth * 2)
+				self.key.right = false;
+			else if(x >= sliceWidth * 2 && x < sliceWidth * 3)
+				self.key.backward = false;
+			else if(x >= sliceWidth * 3 && x <= sliceWidth * 4)
+				self.key.forward = false;
+			touchesHolder.splice(idx, 1);
+		}
+	};
+
+	function handleMoveBetweenAreas(from, to)
+	{
+		var touchDown;
+		switch(from)
+		{
+		case 0:
+			touchDown = self.key.left;
+			self.key.left = false;
+			break;
+		case 1:
+			touchDown = self.key.right;
+			self.key.right = false;
+			break;
+		case 2:
+			touchDown = self.key.backward;
+			self.key.backward = false;
+			break;
+		case 3:
+			touchDown = self.key.forward;
+			self.key.forward = false;
+			break;
+		default:
+			break;
+		}
+		switch(to)
+		{
+		case 0:
+			if(touchDown)
+				self.key.left = true;
+			break;
+		case 1:
+			if(touchDown)
+				self.key.right = true;
+			break;
+		case 2:
+			if(touchDown)
+				self.key.backward = true;
+			break;
+		case 3:
+			if(touchDown)
+				self.key.forward = true;
+			break;
+		default:
+			break;
+		}
+	}
+
+	function onTouchMove(event)
+	{
+		event.preventDefault();
+		var touches = event.changedTouches;
+		var sliceWidth = self.sliceWidth;
+		for(var i = 0; i < touches.length; i++)
+		{
+			var idx = findTouchIndexById(touches[i].identifier);
+			var afterX = touches[i].clientX, origX = touchesHolder[idx].clientX;
+
+			var from, to;
+			if(origX >= 0 && origX < sliceWidth)
+				from = 0;
+			else if(origX >= sliceWidth && origX < sliceWidth * 2)
+				from = 1;
+			else if(origX >= sliceWidth * 2 && origX < sliceWidth * 3)
+				from = 2;
+			else if(origX >= sliceWidth * 3 && origX <= sliceWidth * 4)
+				from = 3;
+
+			if(afterX >= 0 && afterX < sliceWidth)
+				to = 0;
+			else if(afterX >= sliceWidth && afterX < sliceWidth * 2)
+				to = 1;
+			else if(afterX >= sliceWidth * 2 && afterX < sliceWidth * 3)
+				to = 2;
+			else if(afterX >= sliceWidth * 3 && afterX <= sliceWidth * 4)
+				to = 3;
+
+			if(from != to)
+				handleMoveBetweenAreas(from, to);
+			touchesHolder.splice(idx, 1, cloneTouch(touches[i]));
+		}
+
+	}
 	domElement.addEventListener('keydown', onKeyDown, false);
 	domElement.addEventListener('keyup', onKeyUp, false);
+	domElement.addEventListener('touchstart', onTouchStart, false);
+	domElement.addEventListener('touchend', onTouchEndOrCancelled, false);
+	domElement.addEventListener('touchcancel', onTouchEndOrCancelled, false);
+	domElement.addEventListener('touchmove', onTouchMove, false);
 };
 
 bkcore.hexgl.ShipControls.prototype.control = function(threeMesh)

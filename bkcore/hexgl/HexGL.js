@@ -149,6 +149,8 @@ bkcore.hexgl.HexGL.prototype.initGameplay = function()
 		},
 		onFinish: function() {
 			self.displayScore(this.finishTime, this.lapTimes);
+			// Reset the game and enter the new game after 5 seconds.
+			window.setTimeout(function() { self.reset(); }, 5000);
 		}
 	});
 
@@ -233,14 +235,16 @@ bkcore.hexgl.HexGL.prototype.displayScore = function(f, l)
 		+'&p[url]='+encodeURIComponent('http://hexgl.bkcore.com')
 		+'&p[images][0]='+encodeURIComponent('http://hexgl.bkcore.com/image.png'));
 
-	bkcore.hexgl.Ladder.displayLadder('finish-ladder', t, d, 8);
+	// Comment out for mobile devices for no place to display the score.
+	// bkcore.hexgl.Ladder.displayLadder('finish-ladder', t, d, 8);
 
 	if(this.manager.get('game').objects.lowFPS >= 999)
 		sl != undefined && (sl.innerHTML = 'Note: Your framerate was pretty low, you should try a lesser graphic setting!');
 	else
 		sl != undefined && (sl.innerHTML = '');
 
-	dc.style.display = 'block';
+	// Comment out for mobile devices.
+	// dc.style.display = 'block';
 }
 
 bkcore.hexgl.HexGL.prototype.initRenderer = function()
