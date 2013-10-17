@@ -299,12 +299,21 @@ bkcore.hexgl.ShipControls = function(domElement)
 		}
 
 	}
-	domElement.addEventListener('keydown', onKeyDown, false);
-	domElement.addEventListener('keyup', onKeyUp, false);
-	domElement.addEventListener('touchstart', onTouchStart, false);
-	domElement.addEventListener('touchend', onTouchEndOrCancelled, false);
-	domElement.addEventListener('touchcancel', onTouchEndOrCancelled, false);
-	domElement.addEventListener('touchmove', onTouchMove, false);
+	//domElement.addEventListener('keydown', onKeyDown, false);
+	//domElement.addEventListener('keyup', onKeyUp, false);
+	//domElement.addEventListener('touchstart', onTouchStart, false);
+	//domElement.addEventListener('touchend', onTouchEndOrCancelled, false);
+	//domElement.addEventListener('touchcancel', onTouchEndOrCancelled, false);
+	//domElement.addEventListener('touchmove', onTouchMove, false);
+        function receiveMessage(e) {
+            var json = event.data;
+            var msg = JSON.parse(json);
+            self.key.backward = msg.backward;
+            self.key.forward = msg.forward;
+            self.key.left = msg.left;
+            self.key.right = msg.right;
+        }
+        window.addEventListener("message", receiveMessage, false);
 };
 
 bkcore.hexgl.ShipControls.prototype.control = function(threeMesh)

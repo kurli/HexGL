@@ -1,146 +1,169 @@
-<!doctype html>
-<html lang="en">
-	<head>
-		<title>HexGL dev page</title>
-		<meta charset="utf-8">
-		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
-		<link rel="stylesheet" href="css/fonts.css" type="text/css" charset="utf-8">
-		<style>
-			body {
-				background:#ccc;
-				padding:0;
-				margin:0;
-				overflow:hidden;
-				font-family:georgia;
-				text-align:center;
-				color: #666;
-			}
-			h1 {color: #666	; }
-			a { color:skyblue }
-			canvas { pointer-events:none; }
-			#overlay{
-				position: absolute;
-				z-index: 5000;
-				top: 0;
-				left: 0;
-				width: 100%;
-			}
-			#controlmask{
-				position: fixed;
-				z-index: 9999;
-				background-color: #000;
-				width: 100%;
-				height: 100%;
-				top: 0;
-				opacity: 0.5;
-			}
-			.control{
-				z-index: 10000;
-				position: relative;
-				width: 50%;
-			}
-			table{
-				width: 100%;
-				height: 100%;
-				margin:0 auto;
-			}
-			td{
-				width: 25%;
-			}
+<html>
+  <head>
+    <title>HexGL Controller</title>
+    <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+    <style>
+            body {
+                background:#ccc;
+                padding:0;
+                margin:0;
+                overflow:hidden;
+                font-family:georgia;
+                text-align:center;
+                color: #666;
+            }
+            h1 {color: #666    ; }
+            a { color:skyblue }
+            canvas { pointer-events:none; }
+            #overlay{
+                position: absolute;
+                z-index: 5000;
+                top: 0;
+                left: 0;
+                width: 100%;
+            }
+            #controlmask{
+                position: fixed;
+                z-index: 9999;
+                background-color: #000;
+                width: 100%;
+                height: 100%;
+                top: 0;
+                opacity: 0.5;
+            }
+            .control{
+                z-index: 10000;
+                position: relative;
+                width: 50%;
+            }
+            table{
+                width: 100%;
+                height: 100%;
+                margin:0 auto;
+            }
+            td{
+                width: 25%;
+            }
+    </style>
+  </head>
+  <body>
+    <div id="controlmask">
+    <canvas id="myCanvas" width=500 height=500></canvas>
+    <p>alpha: <span id = 'alpha'>alpha</span></p>
+    <p>Y beta: <span id = 'beta'>beta</span></p>
+    <p>X gamma: <span id = 'gamma'>gamma</span></p>
+    </div>
+    <script>
+    if (window.DeviceOrientationEvent) {
+        window.addEventListener("deviceorientation", function () {
+            console.log("deviceorientation");
+            orientationChanged(event.alpha, event.beta, event.gamma);
+            var alpha = document.getElementById('alpha');
+            alpha.innerText = event.alpha;
+            var beta = document.getElementById('beta');
+            beta.innerText = event.beta;
+            var gamma = document.getElementById('gamma');
+            gamma.innerText = event.gamma;
+        }, false);
+    } else if (window.DeviceMotionEvent) {
+        window.addEventListener('devicemotion', function () {
+            console.log("devicemotion");
+            orientationChanged(event.acceleration.x, event.acceleration.y, event.acceleration.z);
+            //tilt([event.acceleration.x * 2, event.acceleration.y * 2]);
+        }, false);
+    } else {
+        window.addEventListener("MozOrientation", function () {
+            console.log("MozOrientation");
+            orientationChanged(orientation.x, orientation.y, orientation.z);
+            //tilt([orientation.x * 50, orientation.y * 50]);
+        }, false);
+    }
 
-		
-		</style>
-	</head>
+    var cur_x = 0;
+    var cur_y = 0;
+    var canvas = document.getElementById('myCanvas');
+    var windowProxy;
 
-	<body>
-		<div id="controlmask">
-		<table>
-		<tr>
-			<td align="center"><img src="textures/left.png" class="control" id="left"></img></td>
-			<td align="center"><img src="textures/right.png" class="control" id="right"></img></td>
-			<td align="center"><img src="textures/down.png" class="control" id="down"></img></td>
-			<td align="center"><img src="textures/up.png" class="control" id="up"></img></td>
-		</tr>
-		</table>
-		</div>
-		<div id="overlay"></div>
-		<div id="main"></div>
-		<script src="js/Three.dev.js"></script>
-		<script src="js/ShaderExtras.js"></script>
-		<script src="js/postprocessing/EffectComposer.js"></script>
-		<script src="js/postprocessing/RenderPass.js"></script>
-		<script src="js/postprocessing/BloomPass.js"></script>
-		<script src="js/postprocessing/ShaderPass.js"></script>
-		<script src="js/postprocessing/MaskPass.js"></script>
-		<script src="js/Detector.js"></script>
-		<script src="js/Stats.js"></script>
-		<script src="js/DAT.GUI.min.js"></script>
+    function orientationChanged(alpha, beta, gamma) {
+        var delta_x = gamma;
+        var delta_y = beta - 74;
+        var forward, backward, left, right;
 
-		<script src="bkcore/Timer.js"></script>
-		<script src="bkcore/ImageData.js"></script>
-		<script src="bkcore/Utils.js"></script>
+        cur_x = canvas.width / 2 + delta_x * 2;
+        cur_y = canvas.height / 2 + delta_y * 2;
 
-		<script src="bkcore/threejs/RenderManager.js"></script>
-		<script src="bkcore/threejs/Shaders.js"></script>
-		<script src="bkcore/threejs/Particles.js"></script>
-		<script src="bkcore/threejs/Loader.js"></script>
+        // Go forward
+        if (beta < 60) forward = true;
+        // Stop
+        if (beta >= 60 && beta <=70) {
+            forward = false;
+            backward = false;
+        }
+        // Go backward
+        if (beta > 70) backward = true;
 
-		<script src="bkcore/hexgl/HUD.js"></script>
-		<script src="bkcore/hexgl/ShipControls.js"></script>
-		<script src="bkcore/hexgl/ShipEffects.js"></script>
-		<script src="bkcore/hexgl/CameraChase.js"></script>
-		<script src="bkcore/hexgl/Gameplay.js"></script>
+        // Left
+        if (gamma < -20) left = true;
+        // Forward
+        if (gamma > 20) right = true;
+        if (gamma >=-20 && gamma <= 20) {
+            left = false;
+            right = false;
+        }
+        var message = {"forward": forward, "backward": backward, "left": left, "right": right};
+        if (windowProxy)
+            windowProxy.postMessage(JSON.stringify(message), "*");
+    }
 
-		<script src="bkcore/hexgl/tracks/Cityscape.js"></script>
+    function drawCanvas() {
+        var context = canvas.getContext('2d');
+        var radius = 50;
 
-		<script src="bkcore/hexgl/HexGL.js"></script>
+        context.clearRect(0, 0, canvas.width, canvas.height);
 
-		<script>
+        context.beginPath();
+        context.moveTo(0, canvas.height / 2);
+        context.lineTo(canvas.width, canvas.height / 2);
+        context.strokeStyle='#ffff00';  
+        context.lineWidth=1;
+        context.stroke();
 
-			var SCREEN_WIDTH = window.innerWidth;
-			var SCREEN_HEIGHT = window.innerHeight;
+        context.beginPath();
+        context.moveTo(canvas.width / 2, 0);
+        context.lineTo(canvas.width / 2, canvas.height);
+        context.strokeStyle='#ffff00';  
+        context.lineWidth=1;
+        context.stroke();    
 
-			var container, hudcontainer;
+        context.beginPath();
+        context.arc(cur_x, cur_y, radius, 0, 2 * Math.PI, false);
+        context.fillStyle = 'green';
+        context.fill();
+        context.lineWidth = 5;
+        context.strokeStyle = '#003300';
+        context.stroke();
+    }
 
-			var hexGL;
+    function init() {
+        cur_x = canvas.width / 2;
+        cur_y = canvas.height / 2;
 
-			function init() {
-				hudcontainer = document.getElementById("overlay");
-				container = document.getElementById("main");
+        timer = setInterval(function()
+        {
+            drawCanvas();
+        }, 24);
+        // clearInterval(timer);
+    }
+    init();
 
-				hexGL = new bkcore.hexgl.HexGL({
-					document: document,
-					width: SCREEN_WIDTH,
-					height: SCREEN_HEIGHT,
-					container: container,
-					overlay: overlay,
-					quality: 0,
-					difficulty: bkcore.Utils.getURLParameter('difficulty'),
-					half: false,
-					track: 'Cityscape'
-				});
+    navigator.experimental.presentation.requestShow(
+        "game.html",
+        function(win) {
+            windowProxy = win;
+        },
+        function() {alert("presentation failed");}
+    );
+    </script>
+  </body>
 
-				hexGL.load({
-					onLoad: function(){
-						console.log("ALL LOADED.");
-						hexGL.init();
-						hexGL.start();
-						window.setTimeout(function() {
-							document.getElementById("controlmask").style.display = "none";
-						}, 5000);
-					},
-					onError: function(s){
-						console.log("ERROR ON "+s+".");
-					},
-					onProgress: function(p, t, n)
-					{
-						console.log("LOADED "+t+" : "+n+" ( "+p.loaded+" / "+p.total+" ).");
-					}
-				});
-			}
-			init();
-
-		</script>
-
-	</body>
 </html>
