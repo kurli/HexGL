@@ -120,6 +120,7 @@ bkcore.hexgl.ShipControls = function(ctx)
 
 	this.touchController = null;
 	this.orientationController = null;
+        this.presentationController = null;
 
 	if(ctx.controlType == 1 && bkcore.controllers.TouchController.isCompatible())
 	{
@@ -147,6 +148,20 @@ bkcore.hexgl.ShipControls = function(ctx)
 				else if(event.touches.length == 3)
 					ctx.restart();
 				else if(event.touches.length < 1)
+					self.key.forward = false;
+				else
+					self.key.forward = true;
+			});
+	}
+	else if(ctx.controlType == 3)
+	{
+		this.presentationController = new bkcore.controllers.PresentationController(
+			function(touchlength){
+				if(touchlength >= 4)
+					window.location.reload(false);
+				else if(touchlength == 3)
+					ctx.restart();
+				else if(touchlength < 1)
 					self.key.forward = false;
 				else
 					self.key.forward = true;
@@ -281,6 +296,12 @@ bkcore.hexgl.ShipControls.prototype.update = function(dt)
 		angularAmount += this.orientationController.beta/45 * this.angularSpeed * dt;
 		rollAmount -= this.orientationController.beta/45 * this.rollAngle;
 	}
+	if(this.presentationController != null)
+	{
+		angularAmount += this.presentationController.gamma/45 * this.angularSpeed * dt;
+		rollAmount -= this.presentationController.gamma/45 * this.rollAngle;
+	}
+
 
 	if(this.key.forward)
 		this.speed += this.thrust * dt;
