@@ -22,15 +22,19 @@
     
         @param dom DOMElement The element that will listen to touch events
         @param registerTouch bool Enable touch detection
+        @param remoteControl bool Whether game view will display remotely
         @param touchCallback function Callback for touches
+        @param remoteControlCallback function Callback for remote non-stick touches
     */
 
 
-    function OrientationController(dom, registerTouch, touchCallback) {
+    function OrientationController(dom, registerTouch, remoteControl, touchCallback, remoteControlCallback) {
       var _this = this;
       this.dom = dom;
       this.registerTouch = registerTouch != null ? registerTouch : true;
+      this.remoteControl = remoteControl != null ? remoteControl : false;
       this.touchCallback = touchCallback != null ? touchCallback : null;
+      this.remoteControlCallback = remoteControlCallback != null ? remoteControlCallback : null;
       this.active = true;
       this.alpha = 0.0;
       this.beta = 0.0;
@@ -39,23 +43,29 @@
       this.dbeta = null;
       this.dgamma = null;
       this.touches = null;
+      
       window.addEventListener('deviceorientation', (function(e) {
         return _this.orientationChange(e);
       }), false);
       if (this.registerTouch) {
-        this.dom.addEventListener('touchstart', (function(e) {
-          return _this.touchStart(e);
-        }), false);
-        this.dom.addEventListener('touchend', (function(e) {
-          return _this.touchEnd(e);
-        }), false);
+        if (!this.remoteControl) {
+          this.dom.addEventListener('touchstart', (function(e) {
+            return _this.touchStart(e);
+          }), false);
+          this.dom.addEventListener('touchend', (function(e) {
+            return _this.touchEnd(e);
+          }), false);
+        } else {
+          window.addEventListener('message', (function(e) {
+            return _this.remoteTouchEvent(e);          
+          }), false);
+        }
       }
     }
 
     /*
         @private
     */
-
 
     OrientationController.prototype.orientationChange = function(event) {
       if (!this.active) {
@@ -76,7 +86,20 @@
     /*
         @private
     */
-
+    
+    OrientationController.prototype.remoteTouchEvent = function(e) {
+      var json = e.data;
+      var msg = JSON.parse(json);
+      if (msg.cmd == "touchstart") {
+        if (typeof this.remoteControlCallback === "function") {
+          this.remoteControlCallback(msg.touchlength);
+        }
+      } else if (msg.cmd == "touchend") {
+        if (typeof this.remoteControlCallback === "function") {
+          this.remoteControlCallback(msg.touchlength);
+        }
+      }
+    }
 
     OrientationController.prototype.touchStart = function(event) {
       var touch, _i, _len, _ref;

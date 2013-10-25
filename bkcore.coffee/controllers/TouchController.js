@@ -23,36 +23,90 @@
     
         @param dom DOMElement The element that will listen to touch events
         @param stickMargin int The left margin in px for stick detection
+        @param remoteControl bool Whether game view will display remotely
         @param buttonCallback function Callback for non-stick touches
+        @param remoteControlCallback function Callback for remote non-stick touches
     */
 
 
-    function TouchController(dom, stickMargin, buttonCallback) {
+    function TouchController(dom, stickMargin, remoteControl, buttonCallback, remoteControlCallback) {
       var _this = this;
       this.dom = dom;
       this.stickMargin = stickMargin != null ? stickMargin : 200;
+      this.remoteControl = remoteControl != null ? remoteControl : false;
       this.buttonCallback = buttonCallback != null ? buttonCallback : null;
+      this.remoteControlCallback = remoteControlCallback != null ? remoteControlCallback : null;
       this.active = true;
       this.touches = null;
       this.stickID = -1;
       this.stickPos = new Vec2(0, 0);
       this.stickStartPos = new Vec2(0, 0);
       this.stickVector = new Vec2(0, 0);
-      this.dom.addEventListener('touchstart', (function(e) {
-        return _this.touchStart(e);
-      }), false);
-      this.dom.addEventListener('touchmove', (function(e) {
-        return _this.touchMove(e);
-      }), false);
-      this.dom.addEventListener('touchend', (function(e) {
-        return _this.touchEnd(e);
-      }), false);
+
+      if (!this.remoteControl) {
+        this.dom.addEventListener('touchstart', (function(e) {
+          return _this.touchStart(e);
+        }), false);
+        this.dom.addEventListener('touchmove', (function(e) {
+          return _this.touchMove(e);
+        }), false);
+        this.dom.addEventListener('touchend', (function(e) {
+          return _this.touchEnd(e);
+        }), false);
+      } else {
+        window.addEventListener('message', (function(e) {
+          return _this.remoteTouchEvent(e);
+        }), false);
+      }
     }
 
     /*
         @private
     */
-
+    TouchController.prototype.remoteTouchEvent = function(e) {
+          var json = e.data;
+          var msg = JSON.parse(json);
+          console.log("TouchEvent:", msg);
+          if (msg.cmd == "touchstart") {
+            if (!this.active) {
+//              return;
+            }
+            console.log("this.stickID:", this.stickID);
+            console.log("this.stickMargin:", this.stickMargin);
+            if (this.stickID < 0 && msg.clientX < this.stickMargin) {
+              this.stickID = msg.identifier;
+              this.stickStartPos.set(msg.clientX, msg.clientY);
+              this.stickPos.copy(this.stickStartPos);
+              this.stickVector.set(0, 0);
+            } else {
+          	   if (typeof this.remoteControlCallback === "function") {
+                this.remoteControlCallback(msg.touchlength);
+              }
+            }
+          } else if (msg.cmd == "touchend") {
+             if (!this.active) {
+//               return;
+             }
+             console.log("this.stickID:", this.stickID);
+             if (this.stickID === msg.identifier) {
+               this.stickID = -1;
+               this.stickVector.set(0, 0);
+             } else {
+               if (typeof this.remoteControlCallback === "function") {
+                 this.remoteControlCallback(msg.touchlength);
+               }
+             }
+          } else if (msg.cmd == "touchmove") {
+            if (!this.active) {
+ //             return;
+            }
+            console.log("this.stickID:", this.stickID);
+            if (this.stickID === msg.identifier) {
+              this.stickPos.set(msg.clientX, msg.clientY);
+              this.stickVector.copy(this.stickPos).substract(this.stickStartPos);
+            }
+          }
+    };
 
     TouchController.prototype.touchStart = function(event) {
       var touch, _i, _len, _ref;

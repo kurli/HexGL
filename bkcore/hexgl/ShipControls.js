@@ -121,10 +121,10 @@ bkcore.hexgl.ShipControls = function(ctx)
 	this.touchController = null;
 	this.orientationController = null;
 
-	if(ctx.controlType == 1 && bkcore.controllers.TouchController.isCompatible())
+	if(ctx.controlType == 1 && (ctx.remoteControl || bkcore.controllers.TouchController.isCompatible()))
 	{
 		this.touchController = new bkcore.controllers.TouchController(
-			domElement, ctx.width/2, 
+			domElement, ctx.width/2, ctx.remoteControl,
 			function(state, touch, event){
 				if(event.touches.length >= 4)
 					window.location.reload(false);
@@ -134,12 +134,22 @@ bkcore.hexgl.ShipControls = function(ctx)
 					self.key.forward = false;
 				else
 					self.key.forward = true;
+			},
+			function(touchLength){
+				if(touchLength >= 4)
+					window.location.reload(false);
+				else if(touchLength == 3)
+					ctx.restart();
+				else if(touchLength <= 1)
+					self.key.forward = false;
+				else
+					self.key.forward = true;
 			});
 	}
 	else if(ctx.controlType == 2 && bkcore.controllers.OrientationController.isCompatible())
 	{
 		this.orientationController = new bkcore.controllers.OrientationController(
-			domElement, true,
+			domElement, true, ctx.remoteControl,
 			function(state, touch, event){
 				console.log(event.touches.length);
 				if(event.touches.length >= 4)
@@ -147,6 +157,16 @@ bkcore.hexgl.ShipControls = function(ctx)
 				else if(event.touches.length == 3)
 					ctx.restart();
 				else if(event.touches.length < 1)
+					self.key.forward = false;
+				else
+					self.key.forward = true;
+			},
+			function(touchLength){
+				if(touchLength >= 4)
+					window.location.reload(false);
+				else if(touchLength == 3)
+					ctx.restart();
+				else if(touchLength <= 1)
 					self.key.forward = false;
 				else
 					self.key.forward = true;
@@ -278,8 +298,8 @@ bkcore.hexgl.ShipControls.prototype.update = function(dt)
 	}
 	if(this.orientationController != null)
 	{
-		angularAmount += this.orientationController.beta/45 * this.angularSpeed * dt;
-		rollAmount -= this.orientationController.beta/45 * this.rollAngle;
+		angularAmount -= this.orientationController.gamma/45 * this.angularSpeed * dt;
+		rollAmount += this.orientationController.gamma/45 * this.rollAngle;
 	}
 
 	if(this.key.forward)

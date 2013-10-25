@@ -62,6 +62,8 @@ bkcore.hexgl.HexGL = function(opts)
 	this.gameover = opts.gameover == undefined ? null : opts.gameover;
 
 	this.godmode = opts.godmode == undefined ? false : opts.godmode;
+	
+	this.remoteControl = opts.remoteControl == undefined ? false : opts.remoteControl;
 
 	this.hud = null;
 
@@ -178,6 +180,9 @@ bkcore.hexgl.HexGL.prototype.displayScore = function(f, l)
 		this.gameover.style.display = "block";
 		this.gameover.innerHTML = tf.m + "'" + tf.s + "''" + tf.ms;
 		this.containers.main.style.display = "none";
+		setTimeout(function(){
+		  window.opener.postMessage("gameover", "*");
+	   }, 1500);
 		return; 
 	}
 

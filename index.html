@@ -137,7 +137,7 @@
 			<table id="titles-buttons">
 				<tr><td class="titles-button" id="s-quality" onclick="rollQuality();">QUALITY: SD</td></tr>
 				<tr><td class="titles-button" id="s-controls" onclick="rollControls();">CONTROLS: TOUCH</td></tr>
-				<tr><td class="titles-button" id="s-remote-display" onclick="rollRemoteDisplay();">REMOTE DISPLAY: OFF</td></tr>
+				<tr style="display:none;" id="remote-display-row"><td class="titles-button" id="s-remote-display" onclick="rollRemoteDisplay();">REMOTE DISPLAY: OFF</td></tr>
 				<tr><td class="titles-button" onclick="init();">START</td></tr>
 			</table>
 		</div>
@@ -211,7 +211,11 @@
 			}
 			
 			try {
-			
+				var	remote_display_row = document.getElementById("remote-display-row");
+				if (navigator.experimental.presentation.displayAvailable)
+					remote_display_row.style.display = "";
+			}catch(e){
+				//TODO
 			}
 
 			var SCREEN_WIDTH = window.innerWidth;
@@ -224,6 +228,7 @@
 			var q = 0, qmax = 2, c = 1, cmax = 2;
 			var sq = ['SD', 'HD', 'ULTRA'];
 			var sc = ['NONE', 'TOUCH', 'MOTION'];
+			var enable_remote_display = 0;
 
 			var	titles = document.getElementById("titles")
 			var	hudcontainer = document.getElementById("overlay");
@@ -232,8 +237,11 @@
 			var	controls2 = document.getElementById("controls-2");
 			var	squality = document.getElementById("s-quality");
 			var	scontrols = document.getElementById("s-controls");
+			var	remote_display = document.getElementById("s-remote-display");
 			var	loading = document.getElementById("loading");
 			var	container = document.getElementById("main");
+			var	windowProxy;
+			var	isGameover = false;
 
 			function rollQuality() {
 				q++;
@@ -246,10 +254,34 @@
 				if(c > cmax) c = 1;
 				scontrols.innerHTML = "CONTROLS: " + sc[c];
 			}
+			
+			function rollRemoteDisplay() {
+				if (enable_remote_display) {
+					enable_remote_display = 0;
+					remote_display.innerHTML = "REMOTE DISPLAY: " + "OFF";
+				} else {
+					enable_remote_display = 1;
+					remote_display.innerHTML = "REMOTE DISPLAY: " + "ON";
+				}
+			}
 
 			function init() {
 				titles.style.display = "none";
 				this['controls'+c].style.display = "block";
+				if (enable_remote_display) {
+					try {
+						navigator.experimental.presentation.requestShow(
+							"remoteView.html",
+							function(win) {
+								windowProxy = win;
+								startRemoteGame();
+							},
+							function() {alert("Remote display failed");}
+						);
+					} catch(e) {
+					  //TODO
+					}
+				}
 			}
 
 			function restart() {
@@ -259,6 +291,9 @@
 			}
 
 			function start() {
+				if (enable_remote_display) {
+					return;
+				}
 
 				controls1.style.display = "none";
 				controls2.style.display = "none";
@@ -301,7 +336,89 @@
 				});
 			}
 			
+			function touchStart(event) {
+				var touch, _i, _len, _ref;
+				_ref = event.changedTouches;
+				console.log("touchStart event.touches.length=", event.touches.length);
+				for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+					touch = _ref[_i];
+					var message = {"cmd": "touchstart",
+					               "touchlength": event.touches.length,
+					               "clientX": touch.clientX,
+					               "clientY": touch.clientY,
+					               "identifier": touch.identifier};
+					if (windowProxy)
+						windowProxy.postMessage(JSON.stringify(message), "*");
+				}
+			}
+			
+			function touchMove(event) {
+				var touch, _i, _len, _ref;
+				event.preventDefault();
+				_ref = event.changedTouches;
+				console.log("touchStart event.touches.length=", event.touches.length);
+				for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+					touch = _ref[_i];
+					var message = {"cmd": "touchmove",
+					               "touchlength": event.touches.length,
+					               "clientX": touch.clientX,
+					               "clientY": touch.clientY,
+					               "identifier": touch.identifier};
+					if (windowProxy)
+						windowProxy.postMessage(JSON.stringify(message), "*");
+				}
+			}
+			
+			function touchEnd(event) {
+				var touch, _i, _len, _ref;
+				console.log("touchStart event.touches.length=", event.touches.length);
+				if (isGameover) {
+              remoteRestart();
+              return;				
+				}
+				
+				_ref = event.changedTouches;
+				for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+					touch = _ref[_i];
+					var message = {"cmd": "touchend",
+					               "touchlength": event.touches.length,
+					               "clientX": touch.clientX,
+					               "clientY": touch.clientY,
+					               "identifier": touch.identifier};
+					if (windowProxy)
+						windowProxy.postMessage(JSON.stringify(message), "*");
+				}
+			}
+
+			function startRemoteGame() {
+				var message = {"cmd": "start", "quality": q, "controlType": c };
+				windowProxy.postMessage(JSON.stringify(message), "*");
+				
+				window.addEventListener('touchstart', (function(event) {
+					touchStart(event);
+					return false;
+				}), false);
+				window.addEventListener('touchend', (function(event) {
+					touchEnd(event);
+					return false;
+				}), false);
+				window.addEventListener('touchmove', (function(event) {
+					touchMove(event);
+					return false;
+				}), false);
+			}
 			//init();
+
+			function receiveRemoteMessage(event) {
+				isGameover = true;
+			}
+			window.addEventListener("message", receiveRemoteMessage, false);
+
+			function remoteRestart() {
+			  isGameover = false;
+			  var message = {"cmd": "restart"};
+			  windowProxy.postMessage(message, "*");
+			}
 
 		</script>
 
