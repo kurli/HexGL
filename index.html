@@ -212,7 +212,7 @@
 			
 			try {
 				var	remote_display_row = document.getElementById("remote-display-row");
-				if (navigator.experimental.presentation.displayAvailable)
+				if (navigator.presentation.displayAvailable)
 					remote_display_row.style.display = "";
 			}catch(e){
 				//TODO
@@ -270,7 +270,7 @@
 				this['controls'+c].style.display = "block";
 				if (enable_remote_display) {
 					try {
-						navigator.experimental.presentation.requestShow(
+						navigator.presentation.requestShow(
 							"remoteView.html",
 							function(win) {
 								windowProxy = win;
